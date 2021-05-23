@@ -1,10 +1,14 @@
 import glob, os
+import aiohttp
+from aiohttp import web
+import asyncio
 import cv2
 import datetime
 import time
 import face_recognition
 # import paho.mqtt.client as mqtt
 from hassapi import Hass
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -96,7 +100,7 @@ class HaCam(Hass):  #hass.Hass
             config['cameras'][0]['areas'][0]['bottom'].get(int) - config['cameras'][0]['areas'][0]['top'].get(int)))
 
 
-    def run_forever(self):
+    async def run_forever(self):
         logger.debug('Entering loop')
         while True:
             # self.mqtt_bouncer()
@@ -197,7 +201,37 @@ class HaCam(Hass):  #hass.Hass
         cv2.destroyAllWindows()
 
 
+async def http_handler(request):
+    name = request.match_info.get('name', "Anonymous")
+    text = "Hello, " + name
+    return web.Response(text=text)
+
+async def hacam_task(app):
+    print("task background tasks...")
+    try:
+        # loop = asyncio.get_event_loop()
+        async for i in range(10):
+            print(i)
+            await time.sleep(1.0)
+        # ha_cam.run_forever()
+    except asyncio.CancelledError:
+        pass
+    finally:
+        pass
+
+async def start_background_tasks(app):
+    app['hacam_task'] = asyncio.create_task(hacam_task(app))
+
+async def cleanup_background_tasks(app):
+    print("cleanup background tasks...")
+    app['hacam_task'].cancel()
+    await app['hacam_task']
+
 if __name__ == '__main__':
-    # kamera = HaCam('output_hon.avi')
-    ha_cam = HaCam()
-    ha_cam.run_forever()
+    # ha_cam = HaCam()
+    app = web.Application()
+    app.add_routes([web.get('/', http_handler),
+                    web.get('/{name}', http_handler)])
+    app.on_startup.append(start_background_tasks)
+    app.on_cleanup.append(cleanup_background_tasks)
+    web.run_app(app)

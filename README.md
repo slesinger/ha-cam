@@ -31,11 +31,11 @@ docker-compose up -d
 
 [x] support multiple cameras
 
-[ ] docker
+[x] docker
 
 [ ] output to https://github.com/custom-cards/surveillance-card
 
-[ ] sound signal response
+[x] sound signal response
 
 [ ] flag no window
 
