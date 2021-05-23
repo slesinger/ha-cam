@@ -1,0 +1,11 @@
+version: "3.8"  # optional since v1.27.0
+services:
+    
+  ha-cam:
+    image: ha-cam:latest
+    environment:
+      - CONFIG_FILE=/config/config.yaml
+    volumes:
+      - /home/hass/docker-volumes/ha-cam/config:/config
+      - /home/hass/docker-volumes/ha-cam/capture:/capture
+      - /home/hass/docker-volumes/ha-cam/faces:/faces

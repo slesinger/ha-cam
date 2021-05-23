@@ -1,0 +1,19 @@
+face_images_dir: 'faces/*'
+capture_video_dir: 'capture'
+cosine_distance_threshold: 0.5
+show_gui: true
+
+cameras:
+  - name: satna
+    rtsp: 'rtsp://usr:pwd@192.168.1.1:554/stream1'
+    enabled: true
+    areas:
+      - name: open_gate
+        left: 1400
+        right: 1650
+        top: 800
+        bottom: 992
+
+hass:
+  base_url: http://localhost:8123
+  bearer: one.two.three
