@@ -2,11 +2,18 @@
 
 Copy and edit ```config.yaml-template```.
 
+Create /home/hass/docker-volumes/[faces|capture|config]
 
 
 ## Build
 ```
 docker build . -t ha-cam:latest
+```
+
+## Run
+Copy docker-compose.yml to /home/hass/docker-volumes/docker-compose/ha-cam
+```
+docker-compose up -d
 ```
 
 # TODO

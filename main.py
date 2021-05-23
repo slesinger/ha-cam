@@ -3,7 +3,7 @@ import cv2
 import datetime
 import time
 import face_recognition
-import paho.mqtt.client as mqtt
+# import paho.mqtt.client as mqtt
 from hassapi import Hass
 
 import logging
@@ -34,7 +34,7 @@ class HaCam(Hass):  #hass.Hass
     cameras = []
     test_video = None
     recorder = None
-    mqtt_bouncer_frames = 0
+    # mqtt_bouncer_frames = 0
     show_gui = False
     last_area_state = {}
     hass = None
@@ -67,11 +67,11 @@ class HaCam(Hass):  #hass.Hass
             else:
                 logger.info(f'Skipping {name}')
 
-        if config['mqtt'].get():
-            self.client = mqtt.Client()
-            self.client.on_connect = on_connect
-            self.client.username_pw_set(config['mqtt']['user'].get(), password=config['mqtt']['pass'].get())
-            self.client.connect(config['mqtt']['host'].get(), config['mqtt']['port'].get(int), 60)
+        # if config['mqtt'].get():
+            # self.client = mqtt.Client()
+            # self.client.on_connect = on_connect
+            # self.client.username_pw_set(config['mqtt']['user'].get(), password=config['mqtt']['pass'].get())
+            # self.client.connect(config['mqtt']['host'].get(), config['mqtt']['port'].get(int), 60)
 
         if config['hass'].get():
             self.hass = Hass(config['hass'].get())
@@ -99,7 +99,7 @@ class HaCam(Hass):  #hass.Hass
     def run_forever(self):
         logger.debug('Entering loop')
         while True:
-            self.mqtt_bouncer()
+            # self.mqtt_bouncer()
             for camera in self.cameras:
                 if camera['cap'].isOpened():
                     ret, src = camera['cap'].read()
@@ -165,7 +165,7 @@ class HaCam(Hass):  #hass.Hass
         # if config['mqtt'].get():
             # self.client.publish(f'hacam/area/{area["name"]}', payload=event, qos=0, retain=False)
             # logger.debug(f'MQTT event message sent for area {area["name"]}, payload {event}')
-        if config['hass'].get() and self.mqtt_bouncer_frames == 0:
+        if config['hass'].get(): # and self.mqtt_bouncer_frames == 0:
             self.hass.call_service("python_script.set_state", entity_id='sensor.hacam_'+area_name, state=who)
             logger.debug(f'Service python_script.set_state called, sensor.hacam_{area_name}, state={who}')
 
@@ -181,8 +181,8 @@ class HaCam(Hass):  #hass.Hass
 
 
 
-    def mqtt_bouncer(self):
-        self.mqtt_bouncer_frames -= 1 if self.mqtt_bouncer_frames > 0 else 0
+    # def mqtt_bouncer(self):
+        # self.mqtt_bouncer_frames -= 1 if self.mqtt_bouncer_frames > 0 else 0
 
 
     def __del__(self):
