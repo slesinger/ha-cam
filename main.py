@@ -1,14 +1,10 @@
 import glob, os
-import aiohttp
-from aiohttp import web
+from aiohttp import web, MultipartWriter
 import asyncio
 import cv2
 import datetime
-import time
 import face_recognition
-# import paho.mqtt.client as mqtt
 from hassapi import Hass
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s')
@@ -42,6 +38,7 @@ class HaCam(Hass):  #hass.Hass
     show_gui = False
     last_area_state = {}
     hass = None
+    out_frame = None
 
     EVENT_FACE_UNKNOWN = 'face_unknown'
     EVENT_NONE = 'none'
@@ -71,12 +68,6 @@ class HaCam(Hass):  #hass.Hass
             else:
                 logger.info(f'Skipping {name}')
 
-        # if config['mqtt'].get():
-            # self.client = mqtt.Client()
-            # self.client.on_connect = on_connect
-            # self.client.username_pw_set(config['mqtt']['user'].get(), password=config['mqtt']['pass'].get())
-            # self.client.connect(config['mqtt']['host'].get(), config['mqtt']['port'].get(int), 60)
-
         if config['hass'].get():
             self.hass = Hass(config['hass'].get())
 
@@ -103,31 +94,27 @@ class HaCam(Hass):  #hass.Hass
     async def run_forever(self):
         logger.debug('Entering loop')
         while True:
-            # self.mqtt_bouncer()
             for camera in self.cameras:
                 if camera['cap'].isOpened():
                     ret, src = camera['cap'].read()
+                    self.out_frame = src
                     if not ret:
                         break
                     else:
-                        if self.test_video:
-                            rgb_small_frame = src[:, :, ::-1] # TODO capture whole screen and remove this
-                            time.sleep(0.1)
-                        else:
-                            for area in camera['areas']:
-                                rgb_small_frame = src[area['top'].get(int):area['bottom'].get(int), area['left'].get(int):area['right'].get(int), ::-1]  #0.022ms
-                                self.process_area(area, rgb_small_frame)
+                        for area in camera['areas']:
+                            rgb_small_frame = src[area['top'].get(int):area['bottom'].get(int), area['left'].get(int):area['right'].get(int), ::-1]  #0.022ms
+                            await self.process_area(area, rgb_small_frame)
+            cv2.rectangle(self.out_frame, (100, 50), (200, 150), (0, 0, 255), 2)
+            yield self.out_frame
+            await asyncio.sleep(0.1)
 
 
-    def process_area(self, area, frame):
+    async def process_area(self, area, frame):
         face_locations = face_recognition.face_locations(frame) #20ms
 
         if self.recorder and len(face_locations) > 0:
             self.recorder.write(frame)
 
-        # for fl in face_locations:
-            # if self.show_gui:
-                # cv2.rectangle(src, (fl[3], fl[0]), (fl[1], fl[2]), (0, 0, 255), 2)
         who = self.EVENT_NONE
         face_encodings = face_recognition.face_encodings(frame, face_locations) # conditional
         for face_encoding in face_encodings:
@@ -135,11 +122,8 @@ class HaCam(Hass):  #hass.Hass
             matches = face_recognition.face_distance(self.known_face_encodings, face_encoding)
             for idx, i in enumerate(matches, start=0):
                 if i < config['cosine_distance_threshold'].get(float):
-                    # if self.show_gui:
-                        # cv2.putText(src, f"{self.people[idx]['name']}:{round(i, 2)}", (10,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (80,255,80))
                     logger.info(f"Setting for {self.people[idx]['name']}")
                     who = self.people[idx]['name']
-                    # self.trigger_mqtt_action()
 
         # who ~ state
         area_name = area['name'].get(str)
@@ -154,39 +138,10 @@ class HaCam(Hass):  #hass.Hass
         # subs = cv2.absdiff(ref_frame, gray)
         # thresh = cv2.threshold(subs, 25, 255, cv2.THRESH_BINARY)[1]
 
-        # if self.show_gui:
-            # cv2.imshow(WND_NAME, rgb_small_frame)
-            # k = cv2.waitKeyEx(10)& 0xff
-            # if k == 27 or k == 113:
-                # exit
-            # if k == 82: #up
-                # pass
-            # if k == 84: #down
-                # pass
-
-
     def set_sensor_state(self, area_name, who):
-        # if config['mqtt'].get():
-            # self.client.publish(f'hacam/area/{area["name"]}', payload=event, qos=0, retain=False)
-            # logger.debug(f'MQTT event message sent for area {area["name"]}, payload {event}')
         if config['hass'].get(): # and self.mqtt_bouncer_frames == 0:
             self.hass.call_service("python_script.set_state", entity_id='sensor.hacam_'+area_name, state=who)
             logger.debug(f'Service python_script.set_state called, sensor.hacam_{area_name}, state={who}')
-
-
-    # def trigger_mqtt_action(self):
-        # if config['mqtt'].get() and self.mqtt_bouncer_frames == 0:
-            # self.mqtt_bouncer_frames = config['mqtt']['mqtt_bouncer_frames'].get(int)
-            # self.client.publish(config['mqtt']['action_topic'].get(), payload=config['mqtt']['payload'].get(), qos=0, retain=False)
-            # logger.debug('MQTT action message sent')
-        # if config['hass'].get() and self.mqtt_bouncer_frames == 0:
-            # self.hass.call_service("shell_command.branka_play_warf")
-            # logger.debug('haf haf')
-
-
-
-    # def mqtt_bouncer(self):
-        # self.mqtt_bouncer_frames -= 1 if self.mqtt_bouncer_frames > 0 else 0
 
 
     def __del__(self):
@@ -201,37 +156,65 @@ class HaCam(Hass):  #hass.Hass
         cv2.destroyAllWindows()
 
 
-async def http_handler(request):
-    name = request.match_info.get('name', "Anonymous")
-    text = "Hello, " + name
-    return web.Response(text=text)
 
-async def hacam_task(app):
-    print("task background tasks...")
+async def listen_to_redis(app):
     try:
-        # loop = asyncio.get_event_loop()
-        async for i in range(10):
-            print(i)
-            await time.sleep(1.0)
-        # ha_cam.run_forever()
+        async for i in hacam.run_forever():
+            # Forward message to all connected websockets:
+            # print(i)
+            pass
     except asyncio.CancelledError:
         pass
     finally:
         pass
 
 async def start_background_tasks(app):
-    app['hacam_task'] = asyncio.create_task(hacam_task(app))
+    app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
+
 
 async def cleanup_background_tasks(app):
-    print("cleanup background tasks...")
-    app['hacam_task'].cancel()
-    await app['hacam_task']
+    app['redis_listener'].cancel()
+    await app['redis_listener']
 
-if __name__ == '__main__':
-    # ha_cam = HaCam()
-    app = web.Application()
-    app.add_routes([web.get('/', http_handler),
-                    web.get('/{name}', http_handler)])
-    app.on_startup.append(start_background_tasks)
-    app.on_cleanup.append(cleanup_background_tasks)
-    web.run_app(app)
+async def api_get_index(request):
+    return web.Response(text='<h1>HA Cam</h1><p><a href="/image">Still Image</a></p><p><a href="/stream">Stream</a></p>', content_type='text/html')
+
+async def api_get_image(request):
+    encode_param = (int(cv2.IMWRITE_JPEG_QUALITY), 90)
+    result, encimg = cv2.imencode('.jpg', hacam.out_frame, encode_param)
+    return web.Response(body=encimg.tobytes(), content_type='image/jpeg')
+
+async def api_get_stream(request):
+    logger.info('Client+')
+    boundary = "boundarydonotcross"
+    response = web.StreamResponse(status=200, reason='OK', headers={
+        'Content-Type': 'multipart/x-mixed-replace; '
+                        'boundary=--%s' % boundary,
+    })
+    await response.prepare(request)
+    encode_param = (int(cv2.IMWRITE_JPEG_QUALITY), 90)
+
+    try:
+        while True:
+            frame = hacam.out_frame
+            if frame is None:
+                continue
+            with MultipartWriter('image/jpeg', boundary=boundary) as mpwriter:
+                result, encimg = cv2.imencode('.jpg', frame, encode_param)
+                data = encimg.tobytes()
+                mpwriter.append(data, {
+                    'Content-Type': 'image/jpeg'
+                })
+                await mpwriter.write(response, close_boundary=False)
+                await asyncio.sleep(0.1)
+    except:
+        logger.info('Client-')
+
+hacam = HaCam()
+app = web.Application()
+app.router.add_route('GET', "/", api_get_index)
+app.router.add_route('GET', "/image", api_get_image)
+app.router.add_route('GET', "/stream", api_get_stream)
+app.on_startup.append(start_background_tasks)
+app.on_cleanup.append(cleanup_background_tasks)
+web.run_app(app)
