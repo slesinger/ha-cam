@@ -210,6 +210,7 @@ async def api_get_stream(request):
     except:
         logger.info('Client-')
 
+
 hacam = HaCam()
 app = web.Application()
 app.router.add_route('GET', "/", api_get_index)

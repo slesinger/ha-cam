@@ -5,6 +5,9 @@ services:
     image: ha-cam:latest
     environment:
       - CONFIG_FILE=/config/config.yaml
+    ports:
+      - 17265:8080/udp
+      - 17265:8080/tcp
     volumes:
       - /home/hass/docker-volumes/ha-cam/config:/config
       - /home/hass/docker-volumes/ha-cam/capture:/capture
