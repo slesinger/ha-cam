@@ -31,28 +31,26 @@ docker-compose up -d
 
 [x] support multiple cameras
 
-[ ] docker
+[x] docker
 
-[ ] output to https://github.com/custom-cards/surveillance-card
+[x] output to https://github.com/custom-cards/surveillance-card
 
-[ ] sound signal response
+[x] sound signal response
 
-[ ] flag no window
+[x] flag no window
 
-[ ] argument to test on video file input
+[x] move action from face image filename to has automation
 
 [ ] motion detection
 
-[ ] move action from face image filename to config
+[ ] capture video per event
+
+[ ] rename video file to mark who is captured
+
+[ ] capture video a second before and after
+
+[ ] multiple cameras thumbnails
 
 [ ] configure vision task (pipeline) in config for each area
 
 [ ] test during night
-
-[ ] rename video file to mark who is captured
-
-[ ] capture video per event
-
-[ ] capture video a second before and after
-
-[ ] create video capture file only on occasion
