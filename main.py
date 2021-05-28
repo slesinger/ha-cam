@@ -122,7 +122,7 @@ class HaCam(Hass):  #hass.Hass
             matches = face_recognition.face_distance(self.known_face_encodings, face_encoding)
             for idx, i in enumerate(matches, start=0):
                 if i < config['cosine_distance_threshold'].get(float):
-                    logger.info(f"Setting for {self.people[idx]['name']}")
+                    logger.info(f"Setting for {self.people[idx]['name']}, distance {i}")
                     who = self.people[idx]['name']
 
         # who ~ state
