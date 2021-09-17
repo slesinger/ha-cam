@@ -3,7 +3,7 @@ from aiohttp import web, MultipartWriter
 import asyncio
 import cv2
 import numpy as np
-import datetime
+import datetime, time
 import face_recognition
 from hassapi import Hass
 
@@ -123,7 +123,14 @@ class HaCam(Hass):  #hass.Hass
             # for camera in self.cameras:
                 if camera['cap'].isOpened():
                     # Read camera
-                    ret, src = camera['cap'].read()
+                    duration = 0.0
+                    src = None
+                    ret = False
+                    while duration < 0.05:
+                        start = time.time()
+                        ret, src = camera['cap'].read()
+                        duration = time.time() - start
+                    # logger.debug('read' + str(duration))
 
                     # Handle out_frame
                     # Am I main camera?
@@ -150,7 +157,8 @@ class HaCam(Hass):  #hass.Hass
                     y += t.shape[1] + y
 
             if self.show_info == 1: # Render info?
-                cv2.rectangle(self.out_frame, (100, 50), (200, 150), (0, 0, 255), 2)
+                cv2.rectangle(self.out_frame, (100, 300), (200, 400), (0, 0, 255), 2)
+                cv2.rectangle(self.out_frame, (1450, 1050), (1500, 1100), (0, 255, 0), 2)
             yield self.out_frame
             await asyncio.sleep(0.1)
 
